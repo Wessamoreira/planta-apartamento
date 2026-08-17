@@ -25,9 +25,11 @@ export const ROOMS = [
 
 export const WALL_PATCHES = [{ x: 473, y: 375, w: 41, h: 17 }]
 
+// Em janelas, `sill` é a altura da mureta (peitoril) e `top` a altura da verga.
+// A janela da sala não é uma porta-balcão: há uma mureta existente de 1,00 m.
 export const OPENINGS = [
   { id: 'porta-entrada', tipo: 'porta',  x: 25,  y: 626, w: 90,  h: 15,  sill: 0,   top: 210, label: 'Porta de entrada' },
-  { id: 'jan-sala',      tipo: 'janela', x: 155, y: 626, w: 125, h: 15,  sill: 100, top: 210, label: 'Janela da sala' },
+  { id: 'jan-sala',      tipo: 'janela', x: 155, y: 626, w: 125, h: 15,  sill: 100, top: 210, label: 'Janela da sala — mureta H=1,00 m' },
   { id: 'jan-cozinha',   tipo: 'janela', x: 560, y: 626, w: 130, h: 15,  sill: 105, top: 210, label: 'Janela da cozinha' },
   { id: 'pass-cozinha',  tipo: 'vao',    x: 499, y: 434, w: 15,  h: 100, sill: 0,   top: 220, label: 'Passagem da cozinha' },
   { id: 'porta-q1',      tipo: 'porta',  x: 335, y: 265, w: 15,  h: 80,  sill: 0,   top: 210, label: 'Porta do Quarto 1' },

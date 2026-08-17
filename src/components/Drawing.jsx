@@ -177,12 +177,31 @@ export default function Drawing({
               <rect key={o.id} x={o.x} y={o.y} width={o.w} height={o.h}
                 fill={voidFill} stroke={o.tipo === 'janela' ? C.arq : 'none'} strokeWidth={o.tipo === 'janela' ? 2.5 : 0} />
             ))}
-            {OPENINGS.filter(o => o.tipo === 'janela').map(o => (
-              <line key={'w' + o.id}
-                x1={o.w > o.h ? o.x : o.x + o.w / 2} y1={o.w > o.h ? o.y + o.h / 2 : o.y}
-                x2={o.w > o.h ? o.x + o.w : o.x + o.w / 2} y2={o.w > o.h ? o.y + o.h / 2 : o.y + o.h}
-                stroke="#6FD3FF" strokeWidth="3" />
-            ))}
+            {OPENINGS.filter(o => o.tipo === 'janela').map(o => {
+              const horizontal = o.w > o.h
+              const cx = o.x + o.w / 2, cy = o.y + o.h / 2
+              // Duas folhas e montante central: símbolo técnico de janela,
+              // deixando clara a mureta abaixo da abertura.
+              return (
+                <g key={'w' + o.id} stroke="#6FD3FF" strokeWidth="2.2">
+                  <line x1={horizontal ? o.x : cx} y1={horizontal ? cy : o.y}
+                    x2={horizontal ? o.x + o.w : cx} y2={horizontal ? cy : o.y + o.h} />
+                  {horizontal ? (
+                    <>
+                      <line x1={o.x + o.w * 0.06} y1={o.y + 2.5} x2={o.x + o.w * 0.46} y2={o.y + 2.5} />
+                      <line x1={o.x + o.w * 0.54} y1={o.y + o.h - 2.5} x2={o.x + o.w * 0.94} y2={o.y + o.h - 2.5} />
+                      <line x1={cx} y1={o.y + 1.5} x2={cx} y2={o.y + o.h - 1.5} />
+                    </>
+                  ) : (
+                    <>
+                      <line x1={o.x + 2.5} y1={o.y + o.h * 0.06} x2={o.x + 2.5} y2={o.y + o.h * 0.46} />
+                      <line x1={o.x + o.w - 2.5} y1={o.y + o.h * 0.54} x2={o.x + o.w - 2.5} y2={o.y + o.h * 0.94} />
+                      <line x1={o.x + 1.5} y1={cy} x2={o.x + o.w - 1.5} y2={cy} />
+                    </>
+                  )}
+                </g>
+              )
+            })}
             {DOOR_SWINGS.map((d, i) => <Arc key={i} {...d} stroke="#6FD3FF" />)}
             {ROOMS.map(r => (
               <rect key={'o' + r.id} x={r.x} y={r.y} width={r.w} height={r.h}

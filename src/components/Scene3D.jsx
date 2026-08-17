@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import * as THREE from 'three'
-import { SHEET, ROOMS, furniture, FINISHES, VIEWPOINTS } from '../data/plan'
+import { SHEET, ROOMS, OPENINGS, furniture, FINISHES, VIEWPOINTS } from '../data/plan'
 
 const H = SHEET.pd
 
@@ -95,7 +95,9 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
       eletro:   new THREE.MeshStandardMaterial({ color: 0xa7b3bd, roughness: 0.3, metalness: 0.7 }),
       madeira:  new THREE.MeshStandardMaterial({ color: 0xc8a97e, roughness: 0.7 }),
       estofado: new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.95 }),
-      vidro:    new THREE.MeshStandardMaterial({ color: 0xaad4e8, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.28 }),
+      vidro:    new THREE.MeshPhysicalMaterial({ color: 0xb9e4f5, roughness: 0.08, metalness: 0.08, transparent: true, opacity: 0.42, transmission: 0.15, side: THREE.DoubleSide }),
+      aluminio: new THREE.MeshStandardMaterial({ color: 0x26343c, roughness: 0.34, metalness: 0.82 }),
+      rejunte:  new THREE.LineBasicMaterial({ color: 0xbeb8ae, transparent: true, opacity: 0.55 }),
     }
 
     const g = new THREE.BoxGeometry(1, 1, 1)
@@ -108,10 +110,45 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
       return m
     }
 
+    const addFloorGrid = r => {
+      const points = []
+      const modulo = 60
+      for (let x = r.x; x <= r.x + r.w; x += modulo) points.push(x, 0.35, r.y, x, 0.35, r.y + r.h)
+      for (let y = r.y; y <= r.y + r.h; y += modulo) points.push(r.x, 0.35, y, r.x + r.w, 0.35, y)
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3))
+      scene.add(new THREE.LineSegments(geo, MAT.rejunte))
+    }
+
+    const addWindow = o => {
+      const horizontal = o.w > o.h
+      const frame = 4
+      const height = o.top - o.sill
+      // wallBoxes mantém o volume abaixo de `sill`: a mureta da sala fica H=1,00 m.
+      if (horizontal) {
+        const wallY = o.y + o.h / 2
+        add({ x: o.x + frame, y: wallY - 1.2, w: o.w - frame * 2, d: 2.4, z: o.sill + frame, hz: height - frame * 2 }, MAT.vidro, false)
+        add({ x: o.x, y: wallY - 2, w: o.w, d: 4, z: o.sill - 2, hz: 4 }, MAT.aluminio)
+        add({ x: o.x, y: wallY - 2, w: o.w, d: 4, z: o.top - 2, hz: 4 }, MAT.aluminio)
+        ;[o.x, o.x + o.w / 2 - 2, o.x + o.w - 4].forEach(x => add({ x, y: wallY - 2, w: 4, d: 4, z: o.sill, hz: height }, MAT.aluminio))
+      } else {
+        const wallX = o.x + o.w / 2
+        add({ x: wallX - 1.2, y: o.y + frame, w: 2.4, d: o.h - frame * 2, z: o.sill + frame, hz: height - frame * 2 }, MAT.vidro, false)
+        add({ x: wallX - 2, y: o.y, w: 4, d: o.h, z: o.sill - 2, hz: 4 }, MAT.aluminio)
+        add({ x: wallX - 2, y: o.y, w: 4, d: o.h, z: o.top - 2, hz: 4 }, MAT.aluminio)
+        ;[o.y, o.y + o.h / 2 - 2, o.y + o.h - 4].forEach(y => add({ x: wallX - 2, y, w: 4, d: 4, z: o.sill, hz: height }, MAT.aluminio))
+      }
+    }
+
     // piso por ambiente
-    for (const r of ROOMS) add({ x: r.x, y: r.y, w: r.w, d: r.h, z: -2, hz: 2 }, MAT.piso, false)
+    for (const r of ROOMS) {
+      add({ x: r.x, y: r.y, w: r.w, d: r.h, z: -2, hz: 2 }, MAT.piso, false)
+      addFloorGrid(r)
+    }
     // paredes
     for (const b of wallBoxes()) add(b, MAT.parede)
+    // Caixilhos e vidro deixam as janelas legíveis e preservam os peitoris.
+    for (const o of OPENINGS.filter(o => o.tipo === 'janela')) addWindow(o)
     // mobiliário
     for (const f of furniture(variant)) {
       if (f.hz <= 0) continue
