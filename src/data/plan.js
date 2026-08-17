@@ -29,8 +29,10 @@ export const WALL_PATCHES = [{ x: 473, y: 375, w: 41, h: 17 }]
 // A janela da sala não é uma porta-balcão: há uma mureta existente de 1,00 m.
 export const OPENINGS = [
   { id: 'porta-entrada', tipo: 'porta',  x: 25,  y: 626, w: 90,  h: 15,  sill: 0,   top: 210, label: 'Porta de entrada' },
-  { id: 'jan-sala',      tipo: 'janela', x: 155, y: 626, w: 125, h: 15,  sill: 100, top: 210, label: 'Janela da sala — mureta H=1,00 m' },
-  { id: 'jan-cozinha',   tipo: 'janela', x: 560, y: 626, w: 130, h: 15,  sill: 105, top: 210, label: 'Janela da cozinha' },
+  // Posições conferidas contra a prancha-base: ambas ficam na fachada.
+  // A da sala é deslocada para o lado direito, antes da parede da cozinha.
+  { id: 'jan-sala',      tipo: 'janela', x: 335, y: 626, w: 125, h: 15,  sill: 100, top: 210, label: 'Janela da sala — mureta H=1,00 m' },
+  { id: 'jan-cozinha',   tipo: 'janela', x: 550, y: 626, w: 100, h: 15,  sill: 105, top: 210, label: 'Janela da cozinha' },
   { id: 'pass-cozinha',  tipo: 'vao',    x: 499, y: 434, w: 15,  h: 100, sill: 0,   top: 220, label: 'Passagem da cozinha' },
   { id: 'porta-q1',      tipo: 'porta',  x: 335, y: 265, w: 15,  h: 80,  sill: 0,   top: 210, label: 'Porta do Quarto 1' },
   { id: 'porta-q2',      tipo: 'porta',  x: 473, y: 275, w: 15,  h: 80,  sill: 0,   top: 210, label: 'Porta do Quarto 2' },
@@ -76,7 +78,7 @@ export const FINISHES = {
 const SALA = [
   { id: 'sofa', layer: 'sala', mat: 'estofado', x: 125, y: 541, w: 220, h: 85, z: 0, hz: 75,
     label: 'Sofá sem braços', spec: '2,20 × 0,85 m · linho cinza claro',
-    detalhe: 'Sem braços, os 2,20 m são 100% assento. Encosto de 75 cm passa por baixo da janela sem bloquear luz.' },
+    detalhe: 'Sem braços, os 2,20 m são 100% assento. Fica no trecho livre da fachada, sem encostar na mureta e sem bloquear a circulação.' },
   { id: 'painel-tv', layer: 'sala', mat: 'madeira', x: 190, y: 375, w: 155, h: 13, z: 40, hz: 120,
     label: 'Painel de TV', spec: '1,55 × 1,20 m · profundidade 12 cm · MDF 18 mm',
     detalhe: 'Régua suspensa, borda inferior a 40 cm do piso, com passa-fios interno. Distância até o sofá: 1,53 m, então TV de 43" a 50".' },
@@ -344,6 +346,7 @@ export function elevations(v) {
 }
 
 export const VIEWPOINTS = [
+  { id: 'superior', nome: 'Planta 3D', pos: [370, 1180, 320], look: [370, 0, 320] },
   { id: 'geral',   nome: 'Geral',    pos: [370, 620, 1180], look: [370, 40, 320] },
   { id: 'cozinha', nome: 'Cozinha',  pos: [522, 158, 462],  look: [700, 112, 600] },
   { id: 'entrada', nome: 'Entrada',  pos: [80, 158, 598],   look: [452, 112, 476] },

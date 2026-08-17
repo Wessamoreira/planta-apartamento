@@ -4,21 +4,30 @@ import { SHEET, ROOMS, OPENINGS, furniture, FINISHES, VIEWPOINTS } from '../data
 
 const H = SHEET.pd
 
+// A mesma lista de vãos alimenta a planta 2D e as paredes 3D. Assim uma
+// correção de posição ou medida não consegue deixar as duas vistas divergentes.
+const hole = id => {
+  const o = OPENINGS.find(item => item.id === id)
+  const horizontal = o.w > o.h
+  const start = horizontal ? o.x : o.y
+  const size = horizontal ? o.w : o.h
+  return { a: start, b: start + size, sill: o.sill, top: o.top }
+}
+
 // --- Paredes: trechos com furos de porta e janela ---------------
 const RUNS = [
   { axis: 'x', x: 0, y: 0, w: 743, d: 15, holes: [
-    { a: 100, b: 250, sill: 110, top: 210 }, { a: 560, b: 690, sill: 110, top: 210 }] },
+    hole('jan-q1'), hole('jan-q2')] },
   { axis: 'x', x: 0, y: 626, w: 743, d: 15, holes: [
-    { a: 25, b: 115, sill: 0, top: 210 }, { a: 155, b: 280, sill: 100, top: 210 },
-    { a: 560, b: 690, sill: 105, top: 210 }] },
+    hole('porta-entrada'), hole('jan-sala'), hole('jan-cozinha')] },
   { axis: 'y', x: 0, y: 0, w: 15, d: 641, holes: [] },
   { axis: 'y', x: 728, y: 0, w: 15, d: 641, holes: [] },
-  { axis: 'y', x: 335, y: 15, w: 15, d: 344, holes: [{ a: 265, b: 345, sill: 0, top: 210 }] },
-  { axis: 'x', x: 350, y: 243, w: 123, d: 15, holes: [{ a: 365, b: 425, sill: 0, top: 210 }] },
-  { axis: 'y', x: 473, y: 15, w: 15, d: 360, holes: [{ a: 275, b: 355, sill: 0, top: 210 }] },
+  { axis: 'y', x: 335, y: 15, w: 15, d: 344, holes: [hole('porta-q1')] },
+  { axis: 'x', x: 350, y: 243, w: 123, d: 15, holes: [hole('porta-banho')] },
+  { axis: 'y', x: 473, y: 15, w: 15, d: 360, holes: [hole('porta-q2')] },
   { axis: 'x', x: 15, y: 359, w: 335, d: 16, holes: [] },
   { axis: 'x', x: 473, y: 375, w: 255, d: 17, holes: [] },
-  { axis: 'y', x: 499, y: 392, w: 15, d: 234, holes: [{ a: 434, b: 534, sill: 0, top: 220 }] },
+  { axis: 'y', x: 499, y: 392, w: 15, d: 234, holes: [hole('pass-cozinha')] },
 ]
 
 function wallBoxes() {
@@ -50,7 +59,7 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
   const host = useRef(null)
   const api = useRef({})
   const [mode, setMode] = useState('orbita')
-  const [vp, setVp] = useState('geral')
+  const [vp, setVp] = useState('superior')
   const keys = useRef({})
   const move = useRef({ f: 0, s: 0 })
 
@@ -164,7 +173,11 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
     const st = { yaw: 0.42, pitch: -1.02, dist: 980, target: new THREE.Vector3(370, 40, 320), pos: new THREE.Vector3() }
     api.current.goto = (id) => {
       const v = VIEWPOINTS.find(p => p.id === id) || VIEWPOINTS[0]
-      if (id === 'geral') {
+      if (id === 'superior') {
+        // Vista de conferência: lê medidas e circulação sem paredes ocultando os ambientes.
+        st.target.set(370, 0, 320); st.dist = 1220; st.yaw = 0.42; st.pitch = -1.30
+        api.current.setMode?.('orbita')
+      } else if (id === 'geral') {
         st.target.set(370, 40, 320); st.dist = 980; st.yaw = 0.42; st.pitch = -1.02
         api.current.setMode?.('orbita')
       } else {
@@ -244,7 +257,7 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
     })
     ro.observe(el)
 
-    api.current.goto('geral')
+    api.current.goto('superior')
 
     return () => {
       cancelAnimationFrame(raf); ro.disconnect()
