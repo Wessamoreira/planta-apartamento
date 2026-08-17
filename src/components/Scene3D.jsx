@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { SHEET, ROOMS, OPENINGS, furniture, FINISHES, VIEWPOINTS } from '../data/plan'
 
 const H = SHEET.pd
@@ -77,9 +78,23 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.05
     el.appendChild(renderer.domElement)
     renderer.domElement.style.display = 'block'
     renderer.domElement.style.touchAction = 'none'
+
+    // Controles padrão de maquete: arrastar para orbitar, botão direito para
+    // deslocar a vista e roda/pinça para aproximar. Funciona em mouse e toque.
+    const controls = new OrbitControls(cam, renderer.domElement)
+    controls.enableDamping = true
+    controls.dampingFactor = 0.075
+    controls.enablePan = true
+    controls.screenSpacePanning = true
+    controls.minDistance = 240
+    controls.maxDistance = 2600
+    controls.maxPolarAngle = Math.PI / 2.02
 
     scene.add(new THREE.HemisphereLight(0xffffff, dark ? 0x3a4a58 : 0xb8b4aa, dark ? 1.9 : 1.6))
     scene.add(new THREE.AmbientLight(0xffffff, dark ? 0.55 : 0.4))
@@ -171,17 +186,36 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
 
     // ---- controles ----
     const st = { yaw: 0.42, pitch: -1.02, dist: 980, target: new THREE.Vector3(370, 40, 320), pos: new THREE.Vector3() }
+    const setOrbit = (target, dist, yaw, pitch) => {
+      st.target.copy(target); st.dist = dist; st.yaw = yaw; st.pitch = pitch
+      const cp = Math.cos(pitch)
+      cam.position.set(
+        target.x + dist * cp * Math.sin(yaw),
+        target.y - dist * Math.sin(pitch),
+        target.z + dist * cp * Math.cos(yaw)
+      )
+      controls.target.copy(target)
+      controls.enabled = true
+      controls.update()
+    }
+    api.current.startWalk = (pos) => {
+      // A sala é o ponto seguro de entrada. Antes, o modo podia começar em (0,0).
+      if (pos) st.pos.set(pos[0], pos[1], pos[2])
+      else if (st.pos.lengthSq() < 1) st.pos.set(190, 158, 520)
+      st.pitch = Math.max(-0.55, Math.min(0.25, st.pitch))
+      controls.enabled = false
+    }
     api.current.goto = (id) => {
       const v = VIEWPOINTS.find(p => p.id === id) || VIEWPOINTS[0]
       if (id === 'superior') {
         // Vista de conferência: lê medidas e circulação sem paredes ocultando os ambientes.
-        st.target.set(370, 0, 320); st.dist = 1220; st.yaw = 0.42; st.pitch = -1.30
+        setOrbit(new THREE.Vector3(370, 0, 320), 1220, 0.42, -1.30)
         api.current.setMode?.('orbita')
       } else if (id === 'geral') {
-        st.target.set(370, 40, 320); st.dist = 980; st.yaw = 0.42; st.pitch = -1.02
+        setOrbit(new THREE.Vector3(370, 40, 320), 980, 0.42, -1.02)
         api.current.setMode?.('orbita')
       } else {
-        st.pos.set(v.pos[0], v.pos[1], v.pos[2])
+        api.current.startWalk(v.pos)
         const dx = v.look[0] - v.pos[0], dz = v.look[2] - v.pos[2], dy = v.look[1] - v.pos[1]
         st.yaw = Math.atan2(dx, dz)
         st.pitch = Math.atan2(dy, Math.hypot(dx, dz))
@@ -190,27 +224,30 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
     }
     api.current.st = st
 
-    let drag = null
-    const dom = renderer.domElement
-    const onDown = e => { drag = { x: e.clientX, y: e.clientY }; dom.setPointerCapture?.(e.pointerId) }
-    const onUp = () => { drag = null }
-    const onMove = e => {
-      if (!drag) return
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y
-      drag = { x: e.clientX, y: e.clientY }
-      st.yaw -= dx * 0.006
-      st.pitch = Math.max(-1.45, Math.min(1.2, st.pitch - dy * 0.005))
-    }
-    const onWheel = e => { e.preventDefault(); st.dist = Math.max(180, Math.min(2600, st.dist * (e.deltaY > 0 ? 1.11 : 0.9))) }
-    dom.addEventListener('pointerdown', onDown)
-    dom.addEventListener('pointermove', onMove)
-    dom.addEventListener('pointerup', onUp)
-    dom.addEventListener('pointerleave', onUp)
-    dom.addEventListener('wheel', onWheel, { passive: false })
-
     const kd = e => { keys.current[e.key.toLowerCase()] = true }
     const ku = e => { keys.current[e.key.toLowerCase()] = false }
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku)
+
+    // No modo de caminhada, o mouse volta a controlar somente o olhar.
+    // A órbita fica desligada para não disputar a posição da câmera.
+    let walkingDrag = null
+    const dom = renderer.domElement
+    const lookDown = e => {
+      if (api.current.mode !== 'caminhar') return
+      walkingDrag = { x: e.clientX, y: e.clientY }
+      dom.setPointerCapture?.(e.pointerId)
+    }
+    const lookMove = e => {
+      if (!walkingDrag || api.current.mode !== 'caminhar') return
+      st.yaw -= (e.clientX - walkingDrag.x) * 0.006
+      st.pitch = Math.max(-0.65, Math.min(0.45, st.pitch - (e.clientY - walkingDrag.y) * 0.005))
+      walkingDrag = { x: e.clientX, y: e.clientY }
+    }
+    const lookUp = () => { walkingDrag = null }
+    dom.addEventListener('pointerdown', lookDown)
+    dom.addEventListener('pointermove', lookMove)
+    dom.addEventListener('pointerup', lookUp)
+    dom.addEventListener('pointercancel', lookUp)
 
     let raf, last = performance.now()
     const loop = () => {
@@ -219,6 +256,7 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
       const walking = api.current.mode === 'caminhar'
 
       if (walking) {
+        controls.enabled = false
         const k = keys.current
         let f = move.current.f + ((k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0))
         let sd = move.current.s + ((k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0))
@@ -237,13 +275,8 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
           st.pos.z + Math.cos(st.yaw) * 100
         )
       } else {
-        const cp = Math.cos(st.pitch)
-        cam.position.set(
-          st.target.x + st.dist * cp * Math.sin(st.yaw),
-          st.target.y - st.dist * Math.sin(st.pitch),
-          st.target.z + st.dist * cp * Math.cos(st.yaw)
-        )
-        cam.lookAt(st.target)
+        controls.enabled = true
+        controls.update()
       }
       renderer.render(scene, cam)
     }
@@ -261,10 +294,10 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
 
     return () => {
       cancelAnimationFrame(raf); ro.disconnect()
-      dom.removeEventListener('pointerdown', onDown); dom.removeEventListener('pointermove', onMove)
-      dom.removeEventListener('pointerup', onUp); dom.removeEventListener('pointerleave', onUp)
-      dom.removeEventListener('wheel', onWheel)
+      controls.dispose()
       window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku)
+      dom.removeEventListener('pointerdown', lookDown); dom.removeEventListener('pointermove', lookMove)
+      dom.removeEventListener('pointerup', lookUp); dom.removeEventListener('pointercancel', lookUp)
       renderer.dispose(); g.dispose()
       Object.values(MAT).forEach(m => m.dispose())
       el.removeChild(renderer.domElement)
@@ -276,6 +309,10 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
 
   const go = useCallback(id => { setVp(id); api.current.goto?.(id) }, [])
   const nudge = (f, s) => { move.current = { f, s } }
+  const setNavigationMode = id => {
+    if (id === 'caminhar') api.current.startWalk?.()
+    setMode(id)
+  }
 
   return (
     <div className="relative h-full w-full bg-ink">
@@ -284,7 +321,7 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start gap-2 p-3">
         <div className="pointer-events-auto flex overflow-hidden border border-edge2 bg-ink/85 backdrop-blur">
           {[['orbita', 'Órbita'], ['caminhar', 'Caminhar']].map(([id, n]) => (
-            <button key={id} onClick={() => setMode(id)}
+            <button key={id} onClick={() => setNavigationMode(id)}
               className={`px-3 py-1.5 font-cond text-[13px] uppercase tracking-[0.14em]
                 ${mode === id ? 'bg-cad text-ink' : 'text-mute hover:text-chalk'}`}>{n}</button>
           ))}
@@ -302,7 +339,7 @@ export default function Scene3D({ variant, pedra, armario, theme }) {
 
       <p className="pointer-events-none absolute bottom-3 left-3 max-w-[62%] font-mono text-[10.5px] leading-relaxed text-mute">
         {mode === 'orbita'
-          ? 'Arraste para girar · roda do mouse para aproximar'
+          ? 'Arraste para orbitar · botão direito para mover · roda ou pinça para aproximar'
           : 'Arraste para olhar · W A S D ou as setas para andar'}
       </p>
 
