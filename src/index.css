@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: #0C1218;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  ::selection { background: #6FD3FF; color: #0C1218; }
+  :focus-visible { outline: 2px solid #6FD3FF; outline-offset: 2px; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: #141C24; }
+  ::-webkit-scrollbar-thumb { background: #2C3B47; }
+  ::-webkit-scrollbar-thumb:hover { background: #3E5162; }
+}
+
+@layer components {
+  /* Alça do wipe — régua de desenho */
+  .wipe {
+    -webkit-appearance: none; appearance: none;
+    height: 34px; background: transparent; cursor: ew-resize;
+  }
+  .wipe::-webkit-slider-runnable-track {
+    height: 34px;
+    background: rgba(12,18,24,.82);
+    border: 1px solid #33444F;
+    backdrop-filter: blur(6px);
+  }
+  .wipe::-moz-range-track {
+    height: 34px; background: rgba(12,18,24,.82); border: 1px solid #33444F;
+  }
+  .wipe::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 32px; margin-top: 1px;
+    background:
+      linear-gradient(#6FD3FF,#6FD3FF) center/2px 18px no-repeat,
+      #0C1218;
+    border: 1px solid #6FD3FF;
+    box-shadow: 0 0 0 1px rgba(111,211,255,.25), 0 0 14px rgba(111,211,255,.30);
+    cursor: ew-resize;
+  }
+  .wipe::-moz-range-thumb {
+    width: 16px; height: 32px; border-radius: 0;
+    background: #0C1218; border: 1px solid #6FD3FF; cursor: ew-resize;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+@media print {
+  header, footer, aside, .wipe { display: none !important; }
+  body, #root { background: #fff !important; }
+}
